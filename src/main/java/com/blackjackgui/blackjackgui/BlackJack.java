@@ -1,11 +1,10 @@
 package com.blackjackgui.blackjackgui;
 
-import java.awt.*;
 import java.util.ArrayList;
 import java.util.Random;
-import javax.swing.*;
 
 public class BlackJack {
+
     private class Card {
         String value;
         String type;
@@ -21,135 +20,153 @@ public class BlackJack {
 
         public int getValue() {
             if ("AJQK".contains(value)) {
-                if (value == "A") {
+                if (value.equals("A")) {
                     return 11;
                 }
                 return 10;
-
             }
-            return Integer.parseInt(value); //2-10
+            return Integer.parseInt(value); // 2-10
         }
 
         public boolean isAce() {
-            return value == "A";
+            return value.equals("A");
         }
     }
 
-    ArrayList<Card> deck;
-    Random random = new Random();
+    private ArrayList<Card> deck;
+    private Random random = new Random();
 
-    //dealer's hand
-    Card hiddenCard;
-    ArrayList<Card> dealerHand;
-    int dealerSum;
-    int dealerAceCount;
+    // Dealer's hand
+    private Card hiddenCard;
+    private ArrayList<Card> dealerHand;
+    private int dealerSum;
+    private int dealerAceCount;
 
-    //player's hand
-    ArrayList<Card> playerHand;
-    int playerSum;
-    int playerAceCount;
+    // Player's hand
+    private ArrayList<Card> playerHand;
+    private int playerSum;
+    private int playerAceCount;
 
-    //window
-    int boardWidth = 900;
-    int boardHeight = 700;
-
-    int cardWidth = 100;
-    int cardHeight = 140;
-
-    JFrame frame = new JFrame("Black Jack");
-    JPanel gamePanel = new JPanel() {
-        @Override
-        public void paintComponent(Graphics g) {
-            super.paintComponent(g);
-
-            Image hiddenCardImg = new ImageIcon(getClass().getResource("com/blackjackgui/blackjackgui/Cards/BACK.png")).getImage();
-            g.drawImage(hiddenCardImg, 20, 20, cardWidth, cardHeight, null);
-        }
-    };
-    JPanel buttonPanel = new JPanel();
-    JButton hitButton = new JButton("Hit");
-    JButton standButton = new JButton("Stand");
-
-    BlackJack() {
+    public BlackJack() {
         startGame();
-
-        frame.setVisible(true);
-        frame.setSize(boardWidth, boardHeight);
-        frame.setLocationRelativeTo(null);
-        frame.setResizable(false);
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
-        gamePanel.setLayout(new BorderLayout());
-        gamePanel.setBackground(new Color(53, 101, 77));
-        frame.add(gamePanel);
-
-        hitButton.setFocusable(false);
-        buttonPanel.add(hitButton);
-        standButton.setFocusable(false);
-        buttonPanel.add(standButton);
-        frame.add(buttonPanel, BorderLayout.SOUTH);
     }
 
     public void startGame() {
         buildDeck();
         shuffleDeck();
 
-        //dealer's hand
-        dealerHand = new ArrayList<Card>();
+        // Dealer's hand
+        dealerHand = new ArrayList<>();
         dealerSum = 0;
         dealerAceCount = 0;
 
-        hiddenCard = deck.remove(deck.size()-1);
+        // Deal the first hidden card
+        hiddenCard = deck.remove(deck.size() - 1); // First card is hidden
         dealerSum += hiddenCard.getValue();
         dealerAceCount += hiddenCard.isAce() ? 1 : 0;
 
-        Card card = deck.remove(deck.size()-1);
+        // Deal the second card to the dealer
+        Card card = deck.remove(deck.size() - 1);
         dealerSum += card.getValue();
         dealerAceCount += card.isAce() ? 1 : 0;
         dealerHand.add(card);
 
-        System.out.println("Dealer:");
-        System.out.println(hiddenCard);
-        System.out.println(dealerHand);
-        System.out.println(dealerSum);
-        System.out.println(dealerAceCount);
-
-
-        //player
-        playerHand = new ArrayList<Card>();
+        // Player's hand
+        playerHand = new ArrayList<>();
         playerSum = 0;
         playerAceCount = 0;
 
+        // Deal two cards to the player
         for (int i = 0; i < 2; i++) {
-            card = deck.remove(deck.size()-1);
+            card = deck.remove(deck.size() - 1);
             playerSum += card.getValue();
             playerAceCount += card.isAce() ? 1 : 0;
             playerHand.add(card);
         }
 
-        System.out.println("Player:");
-        System.out.println(playerHand);
-        System.out.println(playerSum);
-        System.out.println(playerAceCount);
+        // Check for Blackjack at the start of the game
+        checkBlackjack();
     }
 
-    public void buildDeck() {
-        deck = new ArrayList<Card>();
+    public void handleHit() {
+        Card card = deck.remove(deck.size() - 1);
+        playerHand.add(card);
+        playerSum += card.getValue();
+        playerAceCount += card.isAce() ? 1 : 0;
+
+        // Check for Blackjack after a hit
+        if (playerSum == 21 && playerHand.size() == 2) {
+            System.out.println("Player hit blackjack and wins!");
+            terminateGame("Player");
+        }
+    }
+
+    public void handleStand() {
+        // Dealer's turn logic (simplified for now)
+        while (dealerSum < 17) {
+            Card card = deck.remove(deck.size() - 1);
+            dealerHand.add(card);
+            dealerSum += card.getValue();
+            dealerAceCount += card.isAce() ? 1 : 0;
+        }
+
+        // Check for dealer blackjack after they stand
+        if (dealerSum == 21 && dealerHand.size() == 2) {
+            System.out.println("Dealer hit blackjack and wins!");
+            terminateGame("Dealer");
+        } else {
+            // Compare sums if neither has blackjack
+            determineWinner();
+        }
+    }
+
+    public String getPlayerHandWithSum() {
+        StringBuilder hand = new StringBuilder();
+        for (Card card : playerHand) {
+            hand.append(card.toString()).append(" ");
+        }
+        return hand.toString() + " (Total: " + playerSum + ")";
+    }
+
+    public String getDealerHandWithSum(boolean revealHiddenCard) {
+        StringBuilder hand = new StringBuilder();
+        if (revealHiddenCard) {
+            // Show both cards in dealer's hand (reveal hidden card)
+            for (Card card : dealerHand) {
+                hand.append(card.toString()).append(" ");
+            }
+        } else {
+            // Show hidden card and one revealed card
+            hand.append(hiddenCard.toString()).append(" (Hidden) ");
+            for (int i = 1; i < dealerHand.size(); i++) {
+                hand.append(dealerHand.get(i).toString()).append(" ");
+            }
+        }
+        return hand.toString() + " (Total: " + dealerSum + ")";
+    }
+
+    public int getPlayerSum() {
+        return playerSum;
+    }
+
+    public int getDealerSum() {
+        return dealerSum;
+    }
+
+    private void buildDeck() {
+        deck = new ArrayList<>();
         String[] values = {"A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"};
         String[] types = {"C", "D", "H", "S"};
 
-        for (int i = 0; i < types.length; i++) {
-            for (int j = 0; j < values.length; j++) {
-                Card card = new Card(values[j], types[i]);
-                deck.add(card);
+        for (String type : types) {
+            for (String value : values) {
+                Card card = new Card(value, type);
+                deck.add(card);  // Make sure you're adding cards to the deck here
             }
         }
-
-        System.out.println("Build Deck:");
-        System.out.println(deck);
     }
 
-    public void shuffleDeck() {
+    private void shuffleDeck() {
         for (int i = 0; i < deck.size(); i++) {
             int j = random.nextInt(deck.size());
             Card currCard = deck.get(i);
@@ -157,9 +174,34 @@ public class BlackJack {
             deck.set(i, randomCard);
             deck.set(j, currCard);
         }
+    }
 
-        System.out.println("After Shuffle");
-        System.out.println(deck);
+    private void checkBlackjack() {
+        if (playerSum == 21 && playerHand.size() == 2) {
+            System.out.println("Player hit blackjack and wins!");
+            terminateGame("Player");
+        } else if (dealerSum == 21 && dealerHand.size() == 2) {
+            System.out.println("Dealer hit blackjack and wins!");
+            terminateGame("Dealer");
+        }
+    }
+
+    private void determineWinner() {
+        if (playerSum > 21) {
+            System.out.println("Player busted! Dealer wins.");
+        } else if (dealerSum > 21) {
+            System.out.println("Dealer busted! Player wins.");
+        } else if (playerSum > dealerSum) {
+            System.out.println("Player wins!");
+        } else if (dealerSum > playerSum) {
+            System.out.println("Dealer wins!");
+        } else {
+            System.out.println("It's a tie!");
+        }
+    }
+
+    private void terminateGame(String winner) {
+        System.out.println(winner + " wins the game!");
+        System.exit(0); // End the game
     }
 }
-
